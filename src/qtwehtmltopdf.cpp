@@ -7,6 +7,7 @@
 
 #include <QApplication>
 #include <QWebEnginePage>
+#include <QWebEngineProfile>
 #include <QCommandLineParser>
 #include <QDir>
 
@@ -28,6 +29,7 @@ class Html2PdfConverter: public QObject
     private:
         QString input_file_path;
         QString output_file_path;
+        QWebEngineProfile profile;
         QScopedPointer<QWebEnginePage> page;
         enum page_orientation {Portrait, Landscape};
         double margin_left;
@@ -42,12 +44,14 @@ Html2PdfConverter::Html2PdfConverter(QString input_file_path, QString output_fil
                                      ):
     input_file_path(move(input_file_path))
   , output_file_path(move(output_file_path))
-  , page(new QWebEnginePage)
+  , profile(new QWebEngineProfile())
+  , page(new QWebEnginePage(&profile, Q_NULLPTR))
   , margin_left(move(margin_left))
   , margin_top(move(margin_top))
   , margin_right(move(margin_right))
   , margin_bottom(move(margin_bottom))
 {
+    profile.setHttpCacheType(QWebEngineProfile::MemoryHttpCache);
     connect(page.data(), &QWebEnginePage::loadFinished, this, &Html2PdfConverter::load_finished);
     connect(page.data(), &QWebEnginePage::pdfPrintingFinished, this, &Html2PdfConverter::pdf_printing_finished);
 }
