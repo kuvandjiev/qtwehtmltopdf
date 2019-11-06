@@ -9,7 +9,9 @@
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QCommandLineParser>
+#include <QByteArray>
 #include <QDir>
+#include <iostream>
 
 using namespace std;
 using namespace std::placeholders;
@@ -18,7 +20,7 @@ class Html2PdfConverter: public QObject
 {
     Q_OBJECT
     public:
-        explicit Html2PdfConverter(QString input_file_path, QString output_file_path,
+        explicit Html2PdfConverter(QString input_file_path, QString output_file_path="",
                                    double margin_left=20.0, double margin_top=5.0,
                                    double margin_right=20.0, double margin_bottom=5.0
                                   );
@@ -36,6 +38,7 @@ class Html2PdfConverter: public QObject
         double margin_top;
         double margin_right;
         double margin_bottom;
+        void static pdf_printing_to_mem_resultCallback(const QByteArray &result_array);
 };
 
 Html2PdfConverter::Html2PdfConverter(QString input_file_path, QString output_file_path,
@@ -74,7 +77,11 @@ void Html2PdfConverter::load_finished(bool ok)
                               QPageLayout::Portrait,
                               QMarginsF(margin_left, margin_top, margin_right, margin_bottom),
                               QPageLayout::Millimeter);
-    page->printToPdf(output_file_path, page_layout);
+    if (output_file_path != ""){
+        page->printToPdf(output_file_path, page_layout);
+    } else {
+        page->printToPdf(&this->pdf_printing_to_mem_resultCallback, page_layout);
+    }
 }
 
 void Html2PdfConverter::pdf_printing_finished(const QString &file_path, bool success)
@@ -85,6 +92,12 @@ void Html2PdfConverter::pdf_printing_finished(const QString &file_path, bool suc
         QTextStream(stderr) << tr("failed to print to output file '%1'").arg(file_path) << "\n";
         QCoreApplication::exit(1);
     }
+}
+
+void Html2PdfConverter::pdf_printing_to_mem_resultCallback(const QByteArray &result_array)
+{
+    std::cout << result_array.toStdString() << std::endl;
+    QCoreApplication::exit(1);
 }
 
 int main(int argc, char *argv[])
@@ -100,13 +113,13 @@ int main(int argc, char *argv[])
     parser.addPositionalArgument(
         QCoreApplication::translate("main", "Input"),
         QCoreApplication::translate("main", "Input URL of filename to be converted to PDF."));
-    parser.addPositionalArgument(
-        QCoreApplication::translate("main", "Output"),
-        QCoreApplication::translate("main", "Output file name."));
+
+    QCommandLineOption output_filename_option("output", QCoreApplication::translate("main", "Output file; pass blank for stdout"), "output", "");
     QCommandLineOption left_margin_option("margin-left", QCoreApplication::translate("main", "Left margin [mm] (default 20mm)"), "margin-left", "20");
     QCommandLineOption top_margin_option("margin-top", QCoreApplication::translate("main", "Top margin [mm] (default 5mm)"), "margin-top", "5");
     QCommandLineOption right_margin_option("margin-right", QCoreApplication::translate("main", "Right margin [mm] (default 20mm)"), "margin-right", "20");
     QCommandLineOption bottom_margin_option("margin-bottom", QCoreApplication::translate("main", "Bottom margin [mm] (default 5mm)"), "margin-bottom", "5");
+    parser.addOption(output_filename_option);
     parser.addOption(left_margin_option);
     parser.addOption(top_margin_option);
     parser.addOption(right_margin_option);
@@ -115,10 +128,11 @@ int main(int argc, char *argv[])
     parser.process(app);
     const QStringList requiredArguments = parser.positionalArguments();
 
-    if (requiredArguments.size() != 2)
+    if (requiredArguments.size() != 1)
         parser.showHelp(1);
 
-    Html2PdfConverter converter(requiredArguments.at(0), requiredArguments.at(1),
+    Html2PdfConverter converter(requiredArguments.at(0),
+                                parser.value(output_filename_option),
                                 parser.value(left_margin_option).toDouble(),
                                 parser.value(top_margin_option).toDouble(),
                                 parser.value(right_margin_option).toDouble(),

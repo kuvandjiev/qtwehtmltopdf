@@ -2,9 +2,16 @@ version: '3.2'
 services:
   app:
      build: .
-     command: sh -c 'bash'
+     command: sh -c 'rm -f /tmp/.X99-lock && /usr/bin/Xvfb :99 -screen 0 1024x768x24'
      stdin_open: true
      tty: true
      volumes:
        - .:/app/
+     ports:
+       - "5555:5555"
+     environment:
+      - "PYTHON_SERVICE_HOST=0.0.0.0"
+      - "PYTHON_SERVICE_PORT=5555"
+      - "QTWEHTMLTOPDFBIN=/app/build/qtwehtmltopdf"
+      - "DISPLAY=:99"
        
