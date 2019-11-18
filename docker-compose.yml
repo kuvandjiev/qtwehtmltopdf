@@ -2,7 +2,7 @@ version: '3.2'
 services:
   app:
      build: .
-     command: sh -c 'rm -f /tmp/.X99-lock && /usr/bin/Xvfb :99 -screen 0 1024x768x24'
+     command: sh -c 'rm -f /tmp/.X99-lock && nohup /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 & . /py37-venv/bin/activate && python3.7 /app/service-python/main.py'
      stdin_open: true
      tty: true
      volumes:
