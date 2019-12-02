@@ -16,30 +16,55 @@ DISPLAY = os.environ.get("DISPLAY", ":99")
 MAX_CLIENT_REQUEST_SIZE_BYTES = 5 * 1024**2  # 5mb
 
 
+async def create_input_file(raw_data):
+    temp_file = tempfile.NamedTemporaryFile('wb', delete=False)
+    temp_file.close()
+
+    async with aiofiles.open(temp_file.name, mode='wb') as f:
+        await f.write(raw_data)
+    return temp_file.name
+
+
+async def convert_to_pdf(input_file_name):
+    cmd = " ".join(["XDG_RUNTIME_DIR=/tmp/ DISPLAY={}".format(DISPLAY), QTWEHTMLTOPDFBIN, input_file_name])
+    logger.info(cmd)
+    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    result, stderr = await proc.communicate()
+    if stderr:
+        logger.error(stderr)
+    return result
+
+
+async def convert_pdf_to_jpeg(input_file_name):
+    cmd = " ".join(["convert", "-quality", "100%", input_file_name, "-append", "jpeg:-", ])
+    logger.info(cmd)
+    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    result, stderr = await proc.communicate()
+    if stderr:
+        logger.error(stderr)
+    return result
+
+
 class RequestHandler:
 
     async def convert_to_pdf(self, request):
-        raw_data = await request.read()
-        temp_file = tempfile.NamedTemporaryFile('wb', delete=False)
-        temp_file.close()
-
-        async with aiofiles.open(temp_file.name, mode='wb') as f:
-            await f.write(raw_data)
-
-        cmd = " ".join(["XDG_RUNTIME_DIR=/tmp/ DISPLAY={}".format(DISPLAY), QTWEHTMLTOPDFBIN, temp_file.name])
-        logger.info(cmd)
-
-        proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        result, stderr = await proc.communicate()
-
-        if stderr:
-            logger.error(stderr)
-
+        temp_input_file_name = await create_input_file(await request.read())
+        result = await convert_to_pdf(input_file_name=temp_input_file_name)
         return web.Response(body=result, content_type="application/pdf")
+
+    async def convert_to_jpeg(self, request):
+        temp_input_file_name = await create_input_file(await request.read())
+        pdf_data = await convert_to_pdf(input_file_name=temp_input_file_name)
+
+        temp_input_file_name = await create_input_file(pdf_data)
+        result = await convert_pdf_to_jpeg(input_file_name=temp_input_file_name)
+
+        return web.Response(body=result, content_type="image/jpeg")
 
 
 def setup_routes(app, handler):
     app.router.add_post('/topdf', handler.convert_to_pdf, name='topdf')
+    app.router.add_post('/tojpeg', handler.convert_to_jpeg, name='tojpeg')
 
 
 async def server():

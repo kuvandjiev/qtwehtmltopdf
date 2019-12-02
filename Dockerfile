@@ -1,6 +1,9 @@
 # Running with Python service
 FROM kuvandjiev/ubuntu18.04-qt5-python37:latest
 
+RUN apt update && apt install imagemagick -y
+ADD ./service-python/ImageMagickPolicy.xml /etc/ImageMagick-6/policy.xml
+
 RUN mkdir -p /app/
 WORKDIR /app/
 ADD . /app/
