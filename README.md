@@ -51,3 +51,7 @@ Run the Docker container and execute:
 POST requests to http://localhost:5555/topdf containing HTML as raw POST data will return the generated PDF
 
 POST requests to http://localhost:5555/tojpeg containing HTML as raw POST data will return the generated PDF convrted to JPEG
+
+POST requests to http://localhost:5555/urltopdf containing an URL as raw POST data will return the generated PDF
+
+POST requests to http://localhost:5555/urltojpeg containing an URL as raw POST data will return the generated PDF convrted to JPEG
